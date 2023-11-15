@@ -10,6 +10,7 @@ FTUNetFormer 논문에서 제공된 공식코드를 인공위성 이미지에서
 인공위성 이미지와 Masking된 정답데이터(건물=255,255,255 그 외=0,0,0)가 학습에 필요하며, test 및 validation 데이터를 넣어 테스트할 수 있습니다.
 ![Screenshot from 2023-11-15 15-45-30](https://github.com/jwl22/building-segmentation_FTUNetFormer/assets/96900435/bbe987f4-f10a-4662-8fc0-fc0c88ae76de)
 
+--아래는 UNetFormer 공식코드에 대한 설명입니다--<br>
 ## Version 2.0 (stable)
 
 [Welcome to my homepage!](https://WangLibo1995.github.io)
