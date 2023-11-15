@@ -6,56 +6,81 @@ from torch.utils.data import Dataset
 import cv2
 import matplotlib.pyplot as plt
 import albumentations as albu
+
+# import transform
 from .transform import *
 import matplotlib.patches as mpatches
 from PIL import Image
 import random
 
 
-CLASSES = ('ImSurf', 'Building', 'LowVeg', 'Tree', 'Car', 'Clutter')
-PALETTE = [[255, 255, 255], [0, 0, 255], [0, 255, 255], [0, 255, 0], [255, 204, 0], [255, 0, 0]]
+CLASSES = ("ImSurf", "Building", "LowVeg", "Tree", "Car", "Clutter")
+PALETTE = [
+    [0, 0, 0],
+    [255, 255, 255],
+    [0, 255, 255],
+    [0, 255, 0],
+    [255, 204, 0],
+    [255, 0, 0],
+]
 
 ORIGIN_IMG_SIZE = (1024, 1024)
 INPUT_IMG_SIZE = (1024, 1024)
-TEST_IMG_SIZE = (1024, 1024)
+TEST_IMG_SIZE = (224, 224)
+
 
 def get_training_transform():
     train_transform = [
-        # albu.RandomBrightnessContrast(brightness_limit=0.25, contrast_limit=0.25, p=0.15),
-        # albu.RandomRotate90(p=0.25),
-        albu.Normalize()
+        albu.RandomBrightnessContrast(
+            brightness_limit=0.25, contrast_limit=0.25, p=0.15
+        ),
+        albu.RandomRotate90(p=0.25),
+        albu.Normalize(),
     ]
     return albu.Compose(train_transform)
 
 
 def train_aug(img, mask):
-    crop_aug = Compose([RandomScale(scale_list=[0.75, 1.0, 1.25, 1.5], mode='value'),
-                        SmartCropV1(crop_size=768, max_ratio=0.75, ignore_index=len(CLASSES), nopad=False)])
+    crop_aug = Compose(
+        [
+            RandomScale(scale_list=[0.75, 1.0, 1.25, 1.5], mode="value"),
+            SmartCropV1(
+                crop_size=768, max_ratio=0.75, ignore_index=len(CLASSES), nopad=False
+            ),
+        ]
+    )
     img, mask = crop_aug(img, mask)
     img, mask = np.array(img), np.array(mask)
     aug = get_training_transform()(image=img.copy(), mask=mask.copy())
-    img, mask = aug['image'], aug['mask']
+    img, mask = aug["image"], aug["mask"]
     return img, mask
 
 
 def get_val_transform():
-    val_transform = [
-        albu.Normalize()
-    ]
+    val_transform = [albu.Normalize()]
     return albu.Compose(val_transform)
 
 
 def val_aug(img, mask):
     img, mask = np.array(img), np.array(mask)
     aug = get_val_transform()(image=img.copy(), mask=mask.copy())
-    img, mask = aug['image'], aug['mask']
+    img, mask = aug["image"], aug["mask"]
     return img, mask
 
 
 class PotsdamDataset(Dataset):
-    def __init__(self, data_root='data/potsdam/test', mode='val', img_dir='images_1024', mask_dir='masks_1024',
-                 img_suffix='.tif', mask_suffix='.png', transform=val_aug, mosaic_ratio=0.0,
-                 img_size=ORIGIN_IMG_SIZE):
+    def __init__(
+        self,
+        data_root="data/potsdam/test",
+        mode="val",
+        img_dir="images_1024",
+        mask_dir="masks_1024",
+        img_suffix=".tif",
+        mask_suffix=".png",
+        transform=val_aug,
+        mosaic_ratio=0.0,
+        img_size=ORIGIN_IMG_SIZE,
+    ):
         self.data_root = data_root
         self.img_dir = img_dir
         self.mask_dir = mask_dir
@@ -69,7 +94,7 @@ class PotsdamDataset(Dataset):
 
     def __getitem__(self, index):
         p_ratio = random.random()
-        if p_ratio > self.mosaic_ratio or self.mode == 'val' or self.mode == 'test':
+        if p_ratio > self.mosaic_ratio or self.mode == "val" or self.mode == "test":
             img, mask = self.load_img_and_mask(index)
             if self.transform:
                 img, mask = self.transform(img, mask)
@@ -91,15 +116,15 @@ class PotsdamDataset(Dataset):
         img_filename_list = os.listdir(osp.join(data_root, img_dir))
         mask_filename_list = os.listdir(osp.join(data_root, mask_dir))
         assert len(img_filename_list) == len(mask_filename_list)
-        img_ids = [str(id.split('.')[0]) for id in mask_filename_list]
+        img_ids = [str(id.split(".")[0]) for id in mask_filename_list]
         return img_ids
 
     def load_img_and_mask(self, index):
         img_id = self.img_ids[index]
         img_name = osp.join(self.data_root, self.img_dir, img_id + self.img_suffix)
         mask_name = osp.join(self.data_root, self.mask_dir, img_id + self.mask_suffix)
-        img = Image.open(img_name).convert('RGB')
-        mask = Image.open(mask_name).convert('L')
+        img = Image.open(img_name).convert("RGB")
+        mask = Image.open(mask_name).convert("L")
         return img, mask
 
     def load_mosaic_img_and_mask(self, index):
@@ -138,10 +163,10 @@ class PotsdamDataset(Dataset):
         croped_c = random_crop_c(image=img_c.copy(), mask=mask_c.copy())
         croped_d = random_crop_d(image=img_d.copy(), mask=mask_d.copy())
 
-        img_crop_a, mask_crop_a = croped_a['image'], croped_a['mask']
-        img_crop_b, mask_crop_b = croped_b['image'], croped_b['mask']
-        img_crop_c, mask_crop_c = croped_c['image'], croped_c['mask']
-        img_crop_d, mask_crop_d = croped_d['image'], croped_d['mask']
+        img_crop_a, mask_crop_a = croped_a["image"], croped_a["mask"]
+        img_crop_b, mask_crop_b = croped_b["image"], croped_b["mask"]
+        img_crop_c, mask_crop_c = croped_c["image"], croped_c["mask"]
+        img_crop_d, mask_crop_d = croped_d["image"], croped_d["mask"]
 
         top = np.concatenate((img_crop_a, img_crop_b), axis=1)
         bottom = np.concatenate((img_crop_c, img_crop_d), axis=1)

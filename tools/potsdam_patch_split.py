@@ -26,30 +26,30 @@ def seed_everything(seed):
     torch.backends.cudnn.benchmark = True
 
 
-ImSurf = np.array([255, 255, 255])  # label 0
-Building = np.array([255, 0, 0]) # label 1
+ImSurf = np.array([0, 0, 0])  # label 0
+Building = np.array([255, 255, 255]) # label 1
 LowVeg = np.array([255, 255, 0]) # label 2
 Tree = np.array([0, 255, 0]) # label 3
 Car = np.array([0, 255, 255]) # label 4
 Clutter = np.array([0, 0, 255]) # label 5
-Boundary = np.array([0, 0, 0]) # label 6
+Boundary = np.array([255, 0, 0]) # label 6
 num_classes = 6
 
 
 # split huge RS image to small patches
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--img-dir", default="data/potsdam/train_images")
-    parser.add_argument("--mask-dir", default="data/potsdam/train_masks")
+    parser.add_argument("--img-dir", default="/home/jung/Dev/cuda/2023DAYCON_sattelite/train_img")
+    parser.add_argument("--mask-dir", default="/home/jung/Dev/cuda/2023DAYCON_sattelite/train_mask_img")
     parser.add_argument("--output-img-dir", default="data/potsdam/train/images_1024")
     parser.add_argument("--output-mask-dir", default="data/potsdam/train/masks_1024")
     parser.add_argument("--eroded", action='store_true')
     parser.add_argument("--gt", action='store_true')  # output RGB mask
-    parser.add_argument("--rgb-image", action='store_true')  # use Potsdam RGB format images
+    parser.add_argument("--rgb-image", action='store_true', default='true')  # use Potsdam RGB format images
     parser.add_argument("--mode", type=str, default='train')
     parser.add_argument("--val-scale", type=float, default=1.0)  # ignore
-    parser.add_argument("--split-size", type=int, default=1024)
-    parser.add_argument("--stride", type=int, default=1024)
+    parser.add_argument("--split-size", type=int, default=224)
+    parser.add_argument("--stride", type=int, default=224)
     return parser.parse_args()
 
 
@@ -78,8 +78,8 @@ def pv2rgb(mask):
     mask_rgb = np.zeros(shape=(h, w, 3), dtype=np.uint8)
     mask_convert = mask[np.newaxis, :, :]
     mask_rgb[np.all(mask_convert == 3, axis=0)] = [0, 255, 0]
-    mask_rgb[np.all(mask_convert == 0, axis=0)] = [255, 255, 255]
-    mask_rgb[np.all(mask_convert == 1, axis=0)] = [255, 0, 0]
+    mask_rgb[np.all(mask_convert == 1, axis=0)] = [255, 255, 255]
+    mask_rgb[np.all(mask_convert == 0, axis=0)] = [255, 0, 0]
     mask_rgb[np.all(mask_convert == 2, axis=0)] = [255, 255, 0]
     mask_rgb[np.all(mask_convert == 4, axis=0)] = [0, 204, 255]
     mask_rgb[np.all(mask_convert == 5, axis=0)] = [0, 0, 255]
@@ -137,6 +137,7 @@ def image_augment(image, mask, patch_size, mode='train', val_scale=1.0):
 
 
 def car_aug(image, mask):
+    # print(image.shape, mask.shape)
     assert image.shape[:2] == mask.shape
     resize_crop_1 = albu.Compose([albu.Resize(width=int(image.shape[0] * 1.25), height=int(image.shape[1] * 1.25)),
                                   albu.RandomCrop(width=image.shape[0], height=image.shape[1])])(image=image.copy(), mask=mask.copy())
@@ -171,20 +172,22 @@ def patch_format(inp):
     mask_filename = os.path.basename(mask_path)
     # print(img_filename)
     # print(mask_filename)
-    if eroded:
-        mask_path = mask_path + '_label_noBoundary.tif'
-    else:
-        mask_path = mask_path + '_label.tif'
-    if rgb_image:
-        img_path = img_path + '_RGB.tif'
-    else:
-        img_path = img_path + '_IRRG.tif'
+    # if eroded:
+    #     mask_path = mask_path + '_label_noBoundary.tif'
+    # else:
+    #     mask_path = mask_path + '_label.tif'
+    mask_path = mask_path + '.png'
+    # if rgb_image:
+    #     img_path = img_path + '_RGB.tif'
+    # else:
+    #     img_path = img_path + '_IRRG.tif'
+    img_path = img_path + '.png'
     img = Image.open(img_path).convert('RGB')
     # print(img)
     mask = Image.open(mask_path).convert('RGB')
     if gt:
         mask_ = car_color_replace(mask.copy())
-        out_origin_mask_path = os.path.join(masks_output_dir + '/origin/', "{}.tif".format(mask_filename))
+        out_origin_mask_path = os.path.join(masks_output_dir + '/origin/', "{}.png".format(mask_filename))
         cv2.imwrite(out_origin_mask_path, mask_)
     # print(mask)
     # print(img_path)
@@ -200,6 +203,7 @@ def patch_format(inp):
         assert img.shape[0] == mask.shape[0] and img.shape[1] == mask.shape[1]
         if gt:
             mask = pv2rgb(mask.copy())
+        # mask = pv2rgb(mask.copy())
 
         for y in range(0, img.shape[0], stride):
             for x in range(0, img.shape[1], stride):
@@ -210,10 +214,10 @@ def patch_format(inp):
                 if img_tile.shape[0] == split_size and img_tile.shape[1] == split_size \
                         and mask_tile.shape[0] == split_size and mask_tile.shape[1] == split_size:
 
-                    bins = np.array(range(num_classes + 1))
+                    bins = np.array(range(num_classes))
                     class_pixel_counts, _ = np.histogram(mask_tile, bins=bins)
                     cf = class_pixel_counts / (mask_tile.shape[0] * mask_tile.shape[1])
-                    if cf[4] > 1.0 and mode == 'train':  # ignore car_aug, no improvement
+                    if cf[1] > 1.0 and mode == 'train':  # ignore car_aug, no improvement
                         car_imgs, car_masks = car_aug(img_tile, mask_tile)
                         for i in range(len(car_imgs)):
                             out_img_path = os.path.join(imgs_output_dir,
@@ -247,15 +251,16 @@ if __name__ == "__main__":
     val_scale = args.val_scale
     split_size = args.split_size
     stride = args.stride
-    img_paths_raw = glob.glob(os.path.join(imgs_dir, "*.tif"))
-    img_paths = [p[:-9] for p in img_paths_raw]
-    if rgb_image:
-        img_paths = [p[:-8] for p in img_paths_raw]
-    mask_paths_raw = glob.glob(os.path.join(masks_dir, "*.tif"))
-    if eroded:
-        mask_paths = [(p[:-21]) for p in mask_paths_raw]
-    else:
-        mask_paths = [p[:-10] for p in mask_paths_raw]
+    img_paths_raw = glob.glob(os.path.join(imgs_dir, "*.png"))
+    img_paths = [p[:-4] for p in img_paths_raw]
+    # if rgb_image:
+    #     img_paths = [p[:-8] for p in img_paths_raw]
+    mask_paths_raw = glob.glob(os.path.join(masks_dir, "*.png"))
+    # if eroded:
+    #     mask_paths = [(p[:-21]) for p in mask_paths_raw]
+    # else:
+    #     mask_paths = [p[:-10] for p in mask_paths_raw]
+    mask_paths = [p[:-4] for p in mask_paths_raw]
     img_paths.sort()
     mask_paths.sort()
     # print(img_paths[:10])
@@ -277,5 +282,3 @@ if __name__ == "__main__":
     t1 = time.time()
     split_time = t1 - t0
     print('images spliting spends: {} s'.format(split_time))
-
-

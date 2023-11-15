@@ -46,7 +46,6 @@ def py2dict(file_path: Union[str, Path]) -> dict:
 
     if not file_path.exists():
         raise FileExistsError(f"There is no file at the path {file_path}")
-
     module_name = file_path.stem
 
     if "." in module_name:
