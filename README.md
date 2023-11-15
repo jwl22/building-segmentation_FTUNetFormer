@@ -1,4 +1,4 @@
-# Breadcrumbsbuilding-segmentation_FTUNetFormer
+# building-segmentation_FTUNetFormer
 Building segmentation of satellite images 
 
 FTUNetFormer  
