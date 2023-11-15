@@ -1,3 +1,16 @@
+# Breadcrumbsbuilding-segmentation_FTUNetFormer
+Building segmentation of satellite images 
+
+FTUNetFormer  
+paper: https://www.sciencedirect.com/science/article/pii/S0924271622001654  
+source: https://github.com/WangLibo1995/GeoSeg  
+  
+FTUNetFormer 논문에서 제공된 공식코드를 인공위성 이미지에서 건물 segmentation을 수행하도록 수정한 코드입니다.
+
+인공위성 이미지와 Masking된 정답데이터(건물=255,255,255 그 외=0,0,0)가 학습에 필요하며, test 및 validation 데이터를 넣어 테스트할 수 있습니다.
+![Untitled](https://github.com/jwl22/building-segmentation/assets/96900435/24e00079-5c2e-4853-bb75-bcd264ef7c0c)
+
+
 ## Version 2.0 (stable)
 
 [Welcome to my homepage!](https://WangLibo1995.github.io)
